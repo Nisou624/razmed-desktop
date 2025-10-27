@@ -17,7 +17,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 // Initialiser la structure de la base de données
-function initDatabase() {
+async function initDatabase() {
   // Table admins
   db.run(`
     CREATE TABLE IF NOT EXISTS admins (
@@ -30,7 +30,6 @@ function initDatabase() {
     if (err) {
       console.error('Erreur création table admins:', err);
     } else {
-      // Créer l'admin par défaut
       createDefaultAdmin();
     }
   });
@@ -66,13 +65,58 @@ function initDatabase() {
     }
   });
 
+  // Table audit_logs (pour les logs d'audit)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      user_email TEXT,
+      action_type TEXT NOT NULL,
+      action_description TEXT,
+      resource_type TEXT,
+      resource_id INTEGER,
+      resource_name TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      success BOOLEAN DEFAULT 1,
+      error_message TEXT,
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Erreur création table audit_logs:', err);
+    } else {
+      console.log('✅ Table audit_logs créée');
+    }
+  });
+
+  // Table encrypted_files (pour les fichiers chiffrés)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS encrypted_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL UNIQUE,
+      encrypted_path TEXT NOT NULL,
+      original_hash TEXT NOT NULL,
+      encryption_date DATETIME NOT NULL,
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Erreur création table encrypted_files:', err);
+    } else {
+      console.log('✅ Table encrypted_files créée');
+    }
+  });
+
   console.log('✅ Tables créées avec succès');
 }
 
 // Créer l'administrateur par défaut
 function createDefaultAdmin() {
   const defaultEmail = 'admin@sntp.dz';
-  const defaultPassword = 'admin'; // À changer en production
+  const defaultPassword = 'admin';
 
   db.get('SELECT * FROM admins WHERE email = ?', [defaultEmail], async (err, row) => {
     if (err) {
