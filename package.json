@@ -1,0 +1,62 @@
+{
+  "name": "razmed-portal-desktop",
+  "version": "1.0.0",
+  "description": "Application de gestion documentaire SNTP - Version Desktop",
+  "main": "electron.js",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"wait-on http://localhost:3001 && electron .\"",
+    "server": "node server/server.js",
+    "dev": "concurrently \"npm run server\" \"wait-on http://localhost:3001 && electron . --dev\"",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.sntp.razmed-portal",
+    "productName": "SNTP Document Portal",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron.js",
+      "preload.js",
+      "server/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "uploads/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "public/assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "public/assets/icon.png"
+    }
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "bcryptjs": "^2.4.3",
+    "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "path": "^0.12.7",
+    "fs-extra": "^11.1.1",
+    "mammoth": "^1.6.0",
+    "xlsx": "^0.18.5",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "concurrently": "^8.2.1",
+    "wait-on": "^7.0.1"
+  }
+}

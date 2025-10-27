@@ -1,0 +1,86 @@
+{
+  "appId": "com.sntp.razmed-portal",
+  "productName": "SNTP Document Portal",
+  "copyright": "Copyright © 2025 Société Nationale des Travaux Publics",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build"
+  },
+  "files": [
+    "electron.js",
+    "preload.js",
+    "server/**/*",
+    "public/**/*",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "uploads",
+      "to": "uploads",
+      "filter": ["**/*"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64", "ia32"]
+      }
+    ],
+    "icon": "public/assets/icon.ico",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "SNTP Document Portal",
+    "installerIcon": "public/assets/icon.ico",
+    "uninstallerIcon": "public/assets/icon.ico",
+    "installerHeaderIcon": "public/assets/icon.ico"
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "icon": "public/assets/icon.icns",
+    "category": "public.app-category.productivity",
+    "artifactName": "${productName}-${version}.${ext}"
+  },
+  "dmg": {
+    "title": "${productName} ${version}",
+    "icon": "public/assets/icon.icns",
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "public/assets/icon.png",
+    "category": "Office",
+    "artifactName": "${productName}-${version}.${ext}"
+  }
+}
