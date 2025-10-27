@@ -9,25 +9,12 @@
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-            --card-hover-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
         }
 
         body {
             background: var(--primary-gradient);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-        }
-
-        #app {
-            min-height: 100vh;
         }
 
         .loading-screen {
@@ -53,10 +40,6 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         .loading-text {
             color: white;
             font-size: 1.2rem;
@@ -70,16 +53,6 @@
             box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
             padding: 25px 0;
             margin-bottom: 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
         }
 
         .btn-gradient {
@@ -94,14 +67,14 @@
 
         .btn-gradient:hover {
             transform: translateY(-2px);
-            box-shadow: var(--card-hover-shadow);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
             color: white;
         }
 
         .folder-card {
             background: white;
             border-radius: 16px;
-            box-shadow: var(--card-shadow);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: 100%;
             overflow: hidden;
@@ -110,7 +83,7 @@
 
         .folder-card:hover {
             transform: translateY(-8px);
-            box-shadow: var(--card-hover-shadow);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
 
         .login-container {
@@ -126,234 +99,466 @@
             backdrop-filter: blur(10px);
             border-radius: 16px;
             padding: 40px;
-            box-shadow: var(--card-hover-shadow);
             max-width: 450px;
             width: 100%;
         }
 
-        .admin-nav {
-            background-color: #000;
-            padding: 15px 0;
-            margin-bottom: 30px;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .drop-zone {
-            border: 3px dashed #dee2e6;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            background-color: #f8f9fa;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .drop-zone.dragover {
-            border-color: #667eea;
-            background-color: #e8eaf6;
-            transform: scale(1.02);
-        }
-
-        @media (max-width: 768px) {
-            .header-controls {
-                width: 100%;
-                justify-content: center;
-            }
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="loading-screen">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Chargement...</div>
-        </div>
+    <!-- Écran de chargement -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Chargement de l'application...</div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Application principale -->
+    <div id="app" class="hidden">
+        <!-- Le contenu sera généré par JavaScript -->
+    </div>
+
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/theme.js"></script>
-    <script src="/js/view-mode.js"></script>
-    <script src="/js/notifications.js"></script>
-    <script src="/js/app.js"></script>
     
+    <!-- Application JavaScript inline pour éviter les erreurs de chargement -->
     <script>
-        // Initialiser les composants après le chargement de l'application
-        window.addEventListener('DOMContentLoaded', () => {
-            // Injecter le sélecteur de thème dans le header
-            setTimeout(() => {
-                const header = document.querySelector('.header .container');
-                if (header) {
-                    const controlsDiv = document.createElement('div');
-                    controlsDiv.id = 'theme-selector-container';
-                    controlsDiv.style.cssText = 'position: absolute; top: 25px; right: 20px;';
-                    header.appendChild(controlsDiv);
-                    
-                    themeManager.injectThemeSelector('theme-selector-container');
+        // État de l'application
+        let currentUser = null;
+        let isAdmin = false;
+        let currentView = 'public';
+        let folders = [];
+        let currentFolder = null;
+
+        // Fonctions utilitaires
+        function hideLoading() {
+            document.getElementById('loadingScreen').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        function showLoading() {
+            document.getElementById('loadingScreen').classList.remove('hidden');
+            document.getElementById('app').classList.add('hidden');
+        }
+
+        // Vérifier l'authentification
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await response.json();
+                
+                if (data.success && data.authenticated) {
+                    isAdmin = true;
+                    currentUser = data.admin;
+                    console.log('Utilisateur connecté:', currentUser);
                 }
-            }, 1000);
+            } catch (error) {
+                console.error('Erreur vérification auth:', error);
+            }
+        }
+
+        // Charger les dossiers
+        async function loadFolders() {
+            try {
+                const response = await fetch('/api/folders');
+                const data = await response.json();
+                
+                if (data.success) {
+                    folders = data.folders || [];
+                    console.log('Dossiers chargés:', folders.length);
+                }
+            } catch (error) {
+                console.error('Erreur chargement dossiers:', error);
+                folders = [];
+            }
+        }
+
+        // Afficher la vue publique
+        function showPublicView() {
+            const folderCards = folders.map(folder => `
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="folder-card" onclick="navigateToFolder(${folder.id})">
+                        <div style="padding: 25px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 15px;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: var(--primary-gradient); color: white;">
+                                <i class="bi bi-folder-fill"></i>
+                            </div>
+                            <h5 style="font-size: 1.1rem; font-weight: 600; color: #212529; margin: 0;">
+                                ${folder.name}
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            const html = `
+                <div class="header">
+                    <div class="container">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-folder-fill" style="font-size: 2.5rem; color: #667eea;"></i>
+                                <div>
+                                    <h1 style="font-size: 2rem; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+                                        Portail Document
+                                    </h1>
+                                    <p style="color: #6c757d; margin: 0;">Société Nationale des Travaux Publics</p>
+                                </div>
+                            </div>
+                            <div>
+                                ${isAdmin 
+                                    ? `<button class="btn btn-gradient" onclick="showAdminView()">
+                                         <i class="bi bi-gear-fill"></i> Administration
+                                       </button>`
+                                    : `<button class="btn btn-gradient" onclick="showLoginView()">
+                                         <i class="bi bi-box-arrow-in-right"></i> Connexion Admin
+                                       </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <h2 class="text-center text-white mb-4" style="font-size: 2.5rem; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">
+                        <i class="bi bi-collection"></i> Bibliothèque de Documents
+                    </h2>
+                    <p class="text-center text-white mb-5" style="font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+                        Explorez et accédez à tous vos documents organisés par catégorie
+                    </p>
+
+                    ${folders.length > 0 
+                        ? `<div class="row g-4">${folderCards}</div>`
+                        : `<div class="text-center text-white py-5">
+                             <i class="bi bi-folder-x" style="font-size: 4rem; opacity: 0.5;"></i>
+                             <h3 class="mt-3">Aucun dossier disponible</h3>
+                             <p>Contactez l'administrateur pour ajouter des documents</p>
+                           </div>`
+                    }
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // Afficher la vue de connexion
+        function showLoginView() {
+            const html = `
+                <div class="login-container">
+                    <div class="login-card">
+                        <div class="text-center mb-4">
+                            <i class="bi bi-shield-lock-fill" style="font-size: 4rem; color: #667eea;"></i>
+                            <h2 style="margin-top: 20px; font-weight: 700; color: #212529;">Connexion Admin</h2>
+                            <p style="color: #6c757d;">Société Nationale des Travaux Publics</p>
+                        </div>
+
+                        <form id="loginForm" onsubmit="handleLogin(event)">
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 600;">Email</label>
+                                <input type="email" class="form-control form-control-lg" id="email" required value="admin@sntp.dz">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 600;">Mot de passe</label>
+                                <input type="password" class="form-control form-control-lg" id="password" required value="admin">
+                            </div>
+                            <div id="errorMessage" class="alert alert-danger d-none"></div>
+                            <button type="submit" class="btn btn-gradient w-100 btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Se connecter
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-3">
+                            <button class="btn btn-link" onclick="showPublicView()">
+                                <i class="bi bi-arrow-left"></i> Retour à l'accueil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // Afficher la vue admin
+        function showAdminView() {
+            const html = `
+                <div style="background-color: #000; padding: 15px 0; margin-bottom: 30px;">
+                    <div class="container">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-outline-light" onclick="showPublicView()">
+                                <i class="bi bi-arrow-left"></i> Retour
+                            </button>
+                            <h4 class="text-white m-0">
+                                <i class="bi bi-gear-fill"></i> Administration
+                            </h4>
+                            <button class="btn btn-outline-light" onclick="handleLogout()">
+                                <i class="bi bi-box-arrow-right"></i> Déconnexion
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="bi bi-folder-plus"></i> Gestion des Dossiers</h5>
+                                </div>
+                                <div class="card-body">
+                                    <button class="btn btn-primary mb-3" onclick="showCreateFolderModal()">
+                                        <i class="bi bi-plus-circle"></i> Nouveau Dossier
+                                    </button>
+                                    <div id="foldersTable">
+                                        ${renderFoldersTable()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="bi bi-upload"></i> Upload de Fichiers</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center py-4">
+                                        <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #667eea;"></i>
+                                        <p class="mt-2">Fonctionnalité d'upload</p>
+                                        <p class="text-muted">À implémenter</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // Rendre le tableau des dossiers
+        function renderFoldersTable() {
+            if (folders.length === 0) {
+                return `
+                    <div class="text-center py-4">
+                        <i class="bi bi-folder-x" style="font-size: 3rem; color: #6c757d;"></i>
+                        <p class="mt-2">Aucun dossier créé. Commencez par créer votre premier dossier.</p>
+                    </div>
+                `;
+            }
+
+            const rows = folders.map(folder => `
+                <tr>
+                    <td>
+                        <i class="bi bi-folder2" style="color: #667eea;"></i>
+                        <strong>${folder.name}</strong>
+                    </td>
+                    <td>-</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-2" onclick="renameFolderPrompt(${folder.id}, '${folder.name}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteFolder(${folder.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Dossier</th>
+                                <th>Fichiers</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Gérer la connexion
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    isAdmin = true;
+                    currentUser = data.admin;
+                    showAdminView();
+                } else {
+                    errorDiv.textContent = data.error || 'Erreur de connexion';
+                    errorDiv.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Erreur login:', error);
+                errorDiv.textContent = 'Erreur de connexion au serveur';
+                errorDiv.classList.remove('d-none');
+            }
+        }
+
+        // Gérer la déconnexion
+        async function handleLogout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    isAdmin = false;
+                    currentUser = null;
+                    showPublicView();
+                }
+            } catch (error) {
+                console.error('Erreur déconnexion:', error);
+            }
+        }
+
+        // Créer un dossier
+        function showCreateFolderModal() {
+            const name = prompt('Nom du nouveau dossier:');
+            if (name && name.trim()) {
+                createFolder(name.trim());
+            }
+        }
+
+        async function createFolder(name) {
+            try {
+                const response = await fetch('/api/folders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ name, parent_id: null })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadFolders();
+                    showAdminView(); // Recharger la vue admin
+                } else {
+                    alert('Erreur : ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur création dossier:', error);
+                alert('Erreur lors de la création du dossier');
+            }
+        }
+
+        // Renommer un dossier
+        function renameFolderPrompt(folderId, currentName) {
+            const newName = prompt('Nouveau nom du dossier:', currentName);
+            if (newName && newName.trim() && newName !== currentName) {
+                renameFolder(folderId, newName.trim());
+            }
+        }
+
+        async function renameFolder(folderId, newName) {
+            try {
+                const response = await fetch(`/api/folders/${folderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ name: newName })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadFolders();
+                    showAdminView(); // Recharger la vue admin
+                } else {
+                    alert('Erreur : ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur renommage dossier:', error);
+                alert('Erreur lors du renommage du dossier');
+            }
+        }
+
+        // Supprimer un dossier
+        async function deleteFolder(folderId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce dossier ?')) {
+                try {
+                    const response = await fetch(`/api/folders/${folderId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        await loadFolders();
+                        showAdminView(); // Recharger la vue admin
+                    } else {
+                        alert('Erreur : ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Erreur suppression dossier:', error);
+                    alert('Erreur lors de la suppression du dossier');
+                }
+            }
+        }
+
+        // Naviguer vers un dossier
+        function navigateToFolder(folderId) {
+            alert(`Navigation vers le dossier ${folderId} - À implémenter`);
+        }
+
+        // Initialisation de l'application
+        async function initApp() {
+            console.log('🚀 Initialisation de l\'application...');
+            
+            try {
+                await checkAuth();
+                await loadFolders();
+                
+                console.log('✅ Application initialisée');
+                hideLoading();
+                showPublicView();
+                
+            } catch (error) {
+                console.error('❌ Erreur initialisation:', error);
+                hideLoading();
+                document.getElementById('app').innerHTML = `
+                    <div class="container py-5 text-center text-white">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 4rem;"></i>
+                        <h3 class="mt-3">Erreur de chargement</h3>
+                        <p>Impossible de charger l'application</p>
+                        <button class="btn btn-light" onclick="location.reload()">Recharger</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Démarrer l'application quand le DOM est prêt
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initApp, 1000); // Attendre 1 seconde pour que le serveur soit prêt
         });
     </script>
 </body>
-</html><!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNTP - Portail Document</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-            --card-hover-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: var(--primary-gradient);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-        }
-
-        #app {
-            min-height: 100vh;
-        }
-
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--primary-gradient);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 5px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            color: white;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-top: 20px;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-            padding: 25px 0;
-            margin-bottom: 40px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .btn-gradient {
-            background: var(--primary-gradient);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .btn-gradient:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--card-hover-shadow);
-            color: white;
-        }
-
-        .folder-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            height: 100%;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .folder-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--card-hover-shadow);
-        }
-
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: var(--card-hover-shadow);
-            max-width: 450px;
-            width: 100%;
-        }
-
-        .admin-nav {
-            background-color: #000;
-            padding: 15px 0;
-            margin-bottom: 30px;
-        }
-
-        .drop-zone {
-            border: 3px dashed #dee2e6;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            background-color: #f8f9fa;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .drop-zone.dragover {
-            border-color: #667eea;
-            background-color: #e8eaf6;
-            transform: scale(1.02);
-        }
-    </style>
-</head>
-<body>
-    <div id="app">
-        <div class="loading-screen">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Chargement...</div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/app.js"></script>
-</body>
 </html>
+

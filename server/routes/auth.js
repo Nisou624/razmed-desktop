@@ -110,5 +110,13 @@ router.get('/status', isAuthenticated, (req, res) => {
   });
 });
 
+// GET /api/auth - Endpoint racine pour tests/santé
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    endpoints: ['/login (POST)', '/logout (POST)', '/check (GET)', '/status (GET)']
+  });
+});
+
 module.exports = router;
 module.exports.isAuthenticated = isAuthenticated;
