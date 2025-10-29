@@ -18,17 +18,44 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     const basename = path.basename(file.originalname, ext);
-    const safeName = basename.replace(/[^a-z0-9]/gi, '_');
+    const safeName = basename.replace(/[^a-z0-9\u00C0-\u017F]/gi, '_');
     cb(null, uniqueSuffix + '_' + safeName + ext);
   }
 });
 
+// Filtre pour n'accepter que certains types de fichiers
+const fileFilter = (req, file, cb) => {
+  const allowedMimes = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/msword',
+    'application/vnd.ms-excel'
+  ];
+  
+  const allowedExtensions = ['pdf', 'docx', 'doc', 'xlsx', 'xls'];
+  const fileExtension = path.extname(file.originalname).toLowerCase().slice(1);
+  
+  if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Type de fichier non autorisé: ${file.originalname}. Types acceptés: PDF, DOCX, XLSX`), false);
+  }
+};
+
 const upload = multer({
   storage: storage,
+  fileFilter: fileFilter,
   limits: {
     fileSize: 100 * 1024 * 1024 // 100 MB max
   }
 });
+
+// Fonction pour déterminer si le téléchargement est autorisé
+function isDownloadAllowed(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  return ['.docx', '.doc', '.xlsx', '.xls'].includes(ext);
+}
 
 // GET /api/files - Récupérer tous les fichiers
 router.get('/', async (req, res) => {
@@ -68,7 +95,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/files/upload - Upload de fichier (admin uniquement)
+// POST /api/files/upload - Upload de fichier simple (admin uniquement)
 router.post('/upload', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     const { folder_id } = req.body;
@@ -132,7 +159,7 @@ router.post('/upload', isAuthenticated, upload.single('file'), async (req, res) 
   }
 });
 
-// POST /api/files/upload-folder - Upload d'un dossier complet (admin uniquement)
+// POST /api/files/upload-folder - Upload d'un dossier complet avec structure (admin uniquement)
 router.post('/upload-folder', isAuthenticated, upload.array('files', 1000), async (req, res) => {
   try {
     const { folderStructure } = req.body;
@@ -148,6 +175,8 @@ router.post('/upload-folder', isAuthenticated, upload.array('files', 1000), asyn
     const uploadedFiles = [];
     const errors = [];
 
+    console.log(`Traitement de ${req.files.length} fichiers...`);
+
     // Créer les dossiers et uploader les fichiers
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
@@ -157,21 +186,38 @@ router.post('/upload-folder', isAuthenticated, upload.array('files', 1000), asyn
         // Créer la hiérarchie de dossiers si nécessaire
         let currentParentId = null;
 
+        // Parcourir chaque niveau de dossier dans la hiérarchie
         for (const folderName of fileInfo.folders) {
+          if (folderName.trim() === '') continue; // Ignorer les dossiers vides
+
+          // Chercher si le dossier existe déjà à ce niveau
           const existingFolder = await get(
-            'SELECT id FROM folders WHERE name = ? AND parent_id IS ?',
-            [folderName, currentParentId]
+            'SELECT id FROM folders WHERE name = ? AND (parent_id IS ? OR parent_id = ?)',
+            [folderName, currentParentId, currentParentId]
           );
 
           if (existingFolder) {
             currentParentId = existingFolder.id;
           } else {
+            // Créer le nouveau dossier
             const result = await run(
               'INSERT INTO folders (name, parent_id) VALUES (?, ?)',
               [folderName, currentParentId]
             );
             currentParentId = result.id;
+            console.log(`Dossier créé: ${folderName} (ID: ${currentParentId})`);
           }
+        }
+
+        // Si pas de structure de dossier, utiliser le dossier racine par défaut
+        if (!currentParentId && fileInfo.folders.length === 0) {
+          // Créer un dossier "Uploads" par défaut si nécessaire
+          let defaultFolder = await get('SELECT id FROM folders WHERE name = ? AND parent_id IS NULL', ['Uploads']);
+          if (!defaultFolder) {
+            const result = await run('INSERT INTO folders (name, parent_id) VALUES (?, ?)', ['Uploads', null]);
+            defaultFolder = { id: result.id };
+          }
+          currentParentId = defaultFolder.id;
         }
 
         // Enregistrer le fichier
@@ -183,17 +229,32 @@ router.post('/upload-folder', isAuthenticated, upload.array('files', 1000), asyn
 
         uploadedFiles.push({
           id: result.id,
-          filename: file.originalname
+          filename: file.originalname,
+          folder_path: fileInfo.folders.join('/'),
+          folder_id: currentParentId
         });
 
+        console.log(`Fichier uploadé: ${file.originalname} dans dossier ID ${currentParentId}`);
+
       } catch (error) {
-        console.error('Erreur traitement fichier:', error);
+        console.error('Erreur traitement fichier:', file.originalname, error);
         errors.push({
           filename: file.originalname,
           error: error.message
         });
+        
+        // Supprimer le fichier en cas d'erreur
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (unlinkError) {
+          console.error('Erreur suppression fichier en erreur:', unlinkError);
+        }
       }
     }
+
+    console.log(`Upload terminé: ${uploadedFiles.length} fichiers uploadés, ${errors.length} erreurs`);
 
     res.json({
       success: true,
@@ -214,7 +275,7 @@ router.post('/upload-folder', isAuthenticated, upload.array('files', 1000), asyn
   }
 });
 
-// GET /api/files/:id/download - Télécharger un fichier
+// GET /api/files/:id/download - Télécharger un fichier (avec restrictions)
 router.get('/:id/download', async (req, res) => {
   try {
     const { id } = req.params;
@@ -227,6 +288,14 @@ router.get('/:id/download', async (req, res) => {
       });
     }
 
+    // Vérifier si le téléchargement est autorisé pour ce type de fichier
+    if (!isDownloadAllowed(file.filename)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Téléchargement non autorisé pour ce type de fichier. Seuls les fichiers DOCX et XLSX peuvent être téléchargés.'
+      });
+    }
+
     const filePath = path.join(__dirname, '..', '..', file.filepath);
 
     if (!fs.existsSync(filePath)) {
@@ -236,7 +305,21 @@ router.get('/:id/download', async (req, res) => {
       });
     }
 
-    res.download(filePath, file.filename);
+    // Définir les en-têtes pour le téléchargement
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+
+    // Envoyer le fichier
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      console.error('Erreur lecture fichier:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la lecture du fichier'
+      });
+    });
 
   } catch (error) {
     console.error('Erreur téléchargement fichier:', error);
@@ -286,3 +369,4 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
 });
 
 module.exports = router;
+

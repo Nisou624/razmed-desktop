@@ -103,6 +103,139 @@
             width: 100%;
         }
 
+        /* Styles pour le drag and drop */
+        .upload-zone {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            background: #e8eaff;
+            border-color: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.drag-over {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .file-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .file-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .file-icon.pdf { color: #dc3545; }
+        .file-icon.docx { color: #0066cc; }
+        .file-icon.xlsx { color: #217346; }
+        .file-icon.default { color: #6c757d; }
+
+        .breadcrumb {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .preview-modal .modal-dialog {
+            max-width: 90%;
+        }
+
+        .preview-content {
+            max-height: 80vh;
+            overflow: auto;
+        }
+
+        /* Styles pour la vue admin */
+        .admin-breadcrumb {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .admin-breadcrumb a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .admin-breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .content-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .content-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .content-item .actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .content-item:hover .actions {
+            opacity: 1;
+        }
+
+        .content-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .folder-icon { color: #667eea; }
+        .file-icon.pdf { color: #dc3545; }
+        .file-icon.docx { color: #0066cc; }
+        .file-icon.xlsx { color: #217346; }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -123,10 +256,159 @@
         <!-- Le contenu sera généré par JavaScript -->
     </div>
 
+    <!-- Modal de prévisualisation -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewTitle">Prévisualisation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body preview-content" id="previewContent">
+                    <!-- Le contenu de prévisualisation sera injecté ici -->
+                </div>
+                <div class="modal-footer">
+                    <div id="downloadSection"></div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour créer un dossier -->
+    <div class="modal fade" id="createFolderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder-plus"></i> Créer un nouveau dossier
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createFolderForm">
+                        <div class="mb-3">
+                            <label for="folderNameInput" class="form-label">Nom du dossier</label>
+                            <input type="text" class="form-control" id="folderNameInput" required>
+                        </div>
+                        <div id="createFolderError" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="handleCreateFolder()">
+                        <i class="bi bi-plus-circle"></i> Créer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour renommer un dossier -->
+    <div class="modal fade" id="renameFolderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil"></i> Renommer le dossier
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="renameFolderForm">
+                        <div class="mb-3">
+                            <label for="newFolderNameInput" class="form-label">Nouveau nom</label>
+                            <input type="text" class="form-control" id="newFolderNameInput" required>
+                        </div>
+                        <div id="renameFolderError" class="alert alert-danger d-none"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-warning" onclick="handleRenameFolder()">
+                        <i class="bi bi-check"></i> Renommer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div class="modal fade" id="deleteFolderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Supprimer le dossier
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer le dossier <strong id="folderToDelete"></strong> ?</p>
+                    <p class="text-muted">Cette action ne peut pas être annulée.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" onclick="handleDeleteFolder()">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression de fichier -->
+    <div class="modal fade" id="deleteFileModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Supprimer le fichier
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer le fichier <strong id="fileToDelete"></strong> ?</p>
+                    <p class="text-muted">Cette action ne peut pas être annulée.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" onclick="handleDeleteFile()">
+                        <i class="bi bi-trash"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour sélectionner le dossier de destination -->
+    <div class="modal fade" id="selectFolderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder"></i> Sélectionner le dossier de destination
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Dans quel dossier souhaitez-vous uploader les fichiers ?</p>
+                    <div id="foldersList">
+                        <!-- La liste des dossiers sera générée ici -->
+                    </div>
+                    <div id="selectFolderError" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Application JavaScript inline pour éviter les erreurs de chargement -->
+    <!-- Application JavaScript -->
     <script>
         // État de l'application
         let currentUser = null;
@@ -134,6 +416,18 @@
         let currentView = 'public';
         let folders = [];
         let currentFolder = null;
+        let currentFolderFiles = [];
+        let pendingFolderId = null;
+        let pendingFileId = null;
+        let pendingFiles = null;
+        let adminNavigationPath = []; // Pour la navigation admin
+
+        // Variables pour les modales
+        let createFolderModal = null;
+        let renameFolderModal = null;
+        let deleteFolderModal = null;
+        let deleteFileModal = null;
+        let selectFolderModal = null;
 
         // Fonctions utilitaires
         function hideLoading() {
@@ -144,6 +438,51 @@
         function showLoading() {
             document.getElementById('loadingScreen').classList.remove('hidden');
             document.getElementById('app').classList.add('hidden');
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            switch (ext) {
+                case 'pdf': return { icon: 'bi-file-earmark-pdf', class: 'pdf' };
+                case 'docx': case 'doc': return { icon: 'bi-file-earmark-word', class: 'docx' };
+                case 'xlsx': case 'xls': return { icon: 'bi-file-earmark-excel', class: 'xlsx' };
+                default: return { icon: 'bi-file-earmark', class: 'default' };
+            }
+        }
+
+        function isDownloadAllowed(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            return ['docx', 'doc', 'xlsx', 'xls'].includes(ext);
+        }
+
+        // Initialiser les modales
+        function initModals() {
+            createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
+            renameFolderModal = new bootstrap.Modal(document.getElementById('renameFolderModal'));
+            deleteFolderModal = new bootstrap.Modal(document.getElementById('deleteFolderModal'));
+            deleteFileModal = new bootstrap.Modal(document.getElementById('deleteFileModal'));
+            selectFolderModal = new bootstrap.Modal(document.getElementById('selectFolderModal'));
+
+            // Gestionnaires pour les formulaires
+            document.getElementById('createFolderForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                handleCreateFolder();
+            });
+
+            document.getElementById('renameFolderForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                handleRenameFolder();
+            });
+
+            // Focus automatique sur les inputs
+            document.getElementById('createFolderModal').addEventListener('shown.bs.modal', () => {
+                document.getElementById('folderNameInput').focus();
+            });
+
+            document.getElementById('renameFolderModal').addEventListener('shown.bs.modal', () => {
+                document.getElementById('newFolderNameInput').focus();
+                document.getElementById('newFolderNameInput').select();
+            });
         }
 
         // Vérifier l'authentification
@@ -178,8 +517,28 @@
             }
         }
 
+        // Charger les fichiers d'un dossier
+        async function loadFolderFiles(folderId) {
+            try {
+                const response = await fetch(`/api/folders/${folderId}/files`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentFolderFiles = data.files || [];
+                    return currentFolderFiles;
+                }
+            } catch (error) {
+                console.error('Erreur chargement fichiers:', error);
+                currentFolderFiles = [];
+            }
+            return [];
+        }
+
         // Afficher la vue publique
         function showPublicView() {
+            currentFolder = null;
+            adminNavigationPath = [];
+            
             const folderCards = folders.map(folder => `
                 <div class="col-12 col-sm-6 col-md-4 col-lg-3">
                     <div class="folder-card" onclick="navigateToFolder(${folder.id})">
@@ -244,6 +603,85 @@
             document.getElementById('app').innerHTML = html;
         }
 
+        // Afficher le contenu d'un dossier
+        async function showFolderView(folder) {
+            currentFolder = folder;
+            const files = await loadFolderFiles(folder.id);
+            
+            const fileCards = files.map(file => {
+                const fileInfo = getFileIcon(file.filename);
+                return `
+                    <div class="file-card" onclick="previewFile(${file.id}, '${file.filename}')">
+                        <div class="text-center">
+                            <i class="bi ${fileInfo.icon} file-icon ${fileInfo.class}"></i>
+                            <h6 class="mb-2">${file.filename}</h6>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); previewFile(${file.id}, '${file.filename}')">
+                                    <i class="bi bi-eye"></i> Voir
+                                </button>
+                                ${isDownloadAllowed(file.filename) 
+                                    ? `<button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); downloadFile(${file.id})">
+                                         <i class="bi bi-download"></i> Télécharger
+                                       </button>`
+                                    : `<button class="btn btn-sm btn-outline-secondary" disabled title="Téléchargement non autorisé pour ce type de fichier">
+                                         <i class="bi bi-lock"></i> Protégé
+                                       </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const html = `
+                <div class="header">
+                    <div class="container">
+                        <nav class="breadcrumb">
+                            <a class="breadcrumb-item" href="#" onclick="showPublicView()">
+                                <i class="bi bi-house"></i> Accueil
+                            </a>
+                            <span class="breadcrumb-item active">${folder.name}</span>
+                        </nav>
+                        
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-folder-open" style="font-size: 2.5rem; color: #667eea;"></i>
+                                <div>
+                                    <h1 style="font-size: 2rem; font-weight: 700; color: #212529; margin: 0;">
+                                        ${folder.name}
+                                    </h1>
+                                    <p style="color: #6c757d; margin: 0;">${files.length} fichier(s)</p>
+                                </div>
+                            </div>
+                            <div>
+                                ${isAdmin 
+                                    ? `<button class="btn btn-gradient" onclick="showAdminView()">
+                                         <i class="bi bi-gear-fill"></i> Administration
+                                       </button>`
+                                    : `<button class="btn btn-gradient" onclick="showLoginView()">
+                                         <i class="bi bi-box-arrow-in-right"></i> Connexion Admin
+                                       </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container">
+                    ${files.length > 0 
+                        ? `<div class="file-grid">${fileCards}</div>`
+                        : `<div class="text-center text-white py-5">
+                             <i class="bi bi-files" style="font-size: 4rem; opacity: 0.5;"></i>
+                             <h3 class="mt-3">Aucun fichier dans ce dossier</h3>
+                             <p>Ce dossier est vide</p>
+                           </div>`
+                    }
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
         // Afficher la vue de connexion
         function showLoginView() {
             const html = `
@@ -282,8 +720,105 @@
             document.getElementById('app').innerHTML = html;
         }
 
-        // Afficher la vue admin
+        // Afficher la vue admin principale
         function showAdminView() {
+            adminNavigationPath = [];
+            showAdminContent();
+        }
+
+        // Afficher le contenu admin (dossiers racines ou contenu d'un dossier)
+        async function showAdminContent(folderId = null) {
+            let currentFolderData = null;
+            let subFolders = [];
+            let folderFiles = [];
+
+            if (folderId) {
+                // Charger le dossier actuel et son contenu
+                currentFolderData = folders.find(f => f.id === folderId);
+                if (!currentFolderData) {
+                    console.error('Dossier non trouvé:', folderId);
+                    return;
+                }
+                
+                // Charger les sous-dossiers (si il y en a)
+                subFolders = folders.filter(f => f.parent_id === folderId);
+                
+                // Charger les fichiers
+                folderFiles = await loadFolderFiles(folderId);
+            } else {
+                // Vue racine : tous les dossiers sans parent
+                subFolders = folders.filter(f => !f.parent_id);
+            }
+
+            // Générer le breadcrumb
+            const breadcrumbHtml = generateAdminBreadcrumb();
+            
+            // Générer les éléments de contenu
+            const contentItems = [];
+            
+            // Ajouter les sous-dossiers
+            subFolders.forEach(folder => {
+                contentItems.push({
+                    type: 'folder',
+                    id: folder.id,
+                    name: folder.name,
+                    fileCount: folder.file_count || 0
+                });
+            });
+
+            // Ajouter les fichiers
+            folderFiles.forEach(file => {
+                contentItems.push({
+                    type: 'file',
+                    id: file.id,
+                    name: file.filename,
+                    filepath: file.filepath
+                });
+            });
+
+            const contentGrid = contentItems.map(item => {
+                if (item.type === 'folder') {
+                    return `
+                        <div class="content-item" onclick="navigateToAdminFolder(${item.id})">
+                            <div class="actions">
+                                <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); showRenameFolderModal(${item.id}, '${item.name}')" title="Renommer">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); showDeleteFolderModal(${item.id}, '${item.name}')" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <i class="bi bi-folder-fill content-icon folder-icon"></i>
+                            <h6 class="mb-1">${item.name}</h6>
+                            <small class="text-muted">${item.fileCount} fichier(s)</small>
+                        </div>
+                    `;
+                } else {
+                    const fileInfo = getFileIcon(item.name);
+                    return `
+                        <div class="content-item" onclick="previewFile(${item.id}, '${item.name}')">
+                            <div class="actions">
+                                <button class="btn btn-sm btn-info" onclick="event.stopPropagation(); previewFile(${item.id}, '${item.name}')" title="Prévisualiser">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                ${isDownloadAllowed(item.name) 
+                                    ? `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); downloadFile(${item.id})" title="Télécharger">
+                                         <i class="bi bi-download"></i>
+                                       </button>`
+                                    : ''
+                                }
+                                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); showDeleteFileModal(${item.id}, '${item.name}')" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <i class="bi ${fileInfo.icon} content-icon file-icon ${fileInfo.class}"></i>
+                            <h6 class="mb-1">${item.name}</h6>
+                            <small class="text-muted">Fichier</small>
+                        </div>
+                    `;
+                }
+            }).join('');
+
             const html = `
                 <div style="background-color: #000; padding: 15px 0; margin-bottom: 30px;">
                     <div class="container">
@@ -302,19 +837,37 @@
                 </div>
 
                 <div class="container">
+                    <!-- Breadcrumb de navigation -->
+                    ${breadcrumbHtml}
+
                     <div class="row">
                         <div class="col-md-8">
                             <div class="card">
-                                <div class="card-header">
-                                    <h5><i class="bi bi-folder-plus"></i> Gestion des Dossiers</h5>
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5>
+                                        <i class="bi bi-folder2"></i> 
+                                        ${currentFolderData ? `Contenu de "${currentFolderData.name}"` : 'Dossiers racines'}
+                                    </h5>
+                                    <div class="d-flex gap-2">
+                                        ${folderId ? `
+                                            <button class="btn btn-outline-primary btn-sm" onclick="showUploadToFolderModal(${folderId})">
+                                                <i class="bi bi-upload"></i> Upload ici
+                                            </button>
+                                        ` : ''}
+                                        <button class="btn btn-primary btn-sm" onclick="showCreateFolderModal()">
+                                            <i class="bi bi-plus-circle"></i> Nouveau Dossier
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="card-body">
-                                    <button class="btn btn-primary mb-3" onclick="showCreateFolderModal()">
-                                        <i class="bi bi-plus-circle"></i> Nouveau Dossier
-                                    </button>
-                                    <div id="foldersTable">
-                                        ${renderFoldersTable()}
-                                    </div>
+                                    ${contentItems.length > 0 
+                                        ? `<div class="content-grid">${contentGrid}</div>`
+                                        : `<div class="text-center py-5">
+                                             <i class="bi bi-folder-x" style="font-size: 4rem; color: #6c757d;"></i>
+                                             <h5 class="mt-3">Aucun contenu</h5>
+                                             <p class="text-muted">${currentFolderData ? 'Ce dossier est vide' : 'Aucun dossier créé'}</p>
+                                           </div>`
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -324,10 +877,49 @@
                                     <h5><i class="bi bi-upload"></i> Upload de Fichiers</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="text-center py-4">
+                                    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
                                         <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #667eea;"></i>
-                                        <p class="mt-2">Fonctionnalité d'upload</p>
-                                        <p class="text-muted">À implémenter</p>
+                                        <p class="mt-2 mb-0"><strong>Cliquez pour uploader</strong></p>
+                                        <p class="text-muted">ou glissez-déposez vos fichiers/dossiers ici</p>
+                                        <small class="text-muted">Formats supportés: PDF, DOCX, XLSX</small>
+                                    </div>
+                                    
+                                    <input type="file" id="fileInput" multiple webkitdirectory style="display: none;">
+                                    <input type="file" id="singleFileInput" multiple style="display: none;">
+                                    
+                                    <div class="mt-3">
+                                        <button class="btn btn-outline-primary btn-sm me-2" onclick="document.getElementById('singleFileInput').click()">
+                                            <i class="bi bi-file-plus"></i> Fichiers
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm" onclick="document.getElementById('fileInput').click()">
+                                            <i class="bi bi-folder-plus"></i> Dossier
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="uploadProgress" class="mt-3" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted" id="uploadStatus">Upload en cours...</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Statistiques -->
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h5><i class="bi bi-bar-chart"></i> Statistiques</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <h4 class="text-primary">${folders.length}</h4>
+                                            <small>Dossiers</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <h4 class="text-success">${folderFiles.length}</h4>
+                                            <small>Fichiers</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -337,53 +929,427 @@
             `;
 
             document.getElementById('app').innerHTML = html;
+            setupUploadHandlers();
         }
 
-        // Rendre le tableau des dossiers
-        function renderFoldersTable() {
-            if (folders.length === 0) {
+        // Générer le breadcrumb pour l'administration
+        function generateAdminBreadcrumb() {
+            if (adminNavigationPath.length === 0) {
                 return `
-                    <div class="text-center py-4">
-                        <i class="bi bi-folder-x" style="font-size: 3rem; color: #6c757d;"></i>
-                        <p class="mt-2">Aucun dossier créé. Commencez par créer votre premier dossier.</p>
+                    <div class="admin-breadcrumb">
+                        <i class="bi bi-house-fill"></i> <strong>Administration</strong>
                     </div>
                 `;
             }
 
-            const rows = folders.map(folder => `
-                <tr>
-                    <td>
-                        <i class="bi bi-folder2" style="color: #667eea;"></i>
-                        <strong>${folder.name}</strong>
-                    </td>
-                    <td>-</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning me-2" onclick="renameFolderPrompt(${folder.id}, '${folder.name}')">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteFolder(${folder.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
+            let breadcrumb = `
+                <div class="admin-breadcrumb">
+                    <a href="#" onclick="showAdminView()"><i class="bi bi-house-fill"></i> Administration</a>
+            `;
+
+            for (let i = 0; i < adminNavigationPath.length; i++) {
+                const folder = adminNavigationPath[i];
+                if (i === adminNavigationPath.length - 1) {
+                    breadcrumb += ` <i class="bi bi-chevron-right"></i> <strong>${folder.name}</strong>`;
+                } else {
+                    breadcrumb += ` <i class="bi bi-chevron-right"></i> <a href="#" onclick="navigateToAdminFolderByPath(${i})">${folder.name}</a>`;
+                }
+            }
+
+            breadcrumb += '</div>';
+            return breadcrumb;
+        }
+
+        // Naviguer vers un dossier dans l'admin
+        async function navigateToAdminFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+
+            adminNavigationPath.push({ id: folderId, name: folder.name });
+            await showAdminContent(folderId);
+        }
+
+        // Naviguer vers un dossier spécifique dans le chemin
+        async function navigateToAdminFolderByPath(pathIndex) {
+            adminNavigationPath = adminNavigationPath.slice(0, pathIndex + 1);
+            const targetFolder = adminNavigationPath[pathIndex];
+            await showAdminContent(targetFolder.id);
+        }
+
+        // Configuration des gestionnaires d'upload
+        function setupUploadHandlers() {
+            const uploadZone = document.querySelector('.upload-zone');
+            const fileInput = document.getElementById('fileInput');
+            const singleFileInput = document.getElementById('singleFileInput');
+
+            if (!uploadZone) return; // Si pas dans la vue admin
+
+            // Drag and drop pour la zone d'upload
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                uploadZone.classList.add('drag-over');
+            }
+
+            function unhighlight(e) {
+                uploadZone.classList.remove('drag-over');
+            }
+
+            uploadZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const items = dt.items;
+
+                if (items) {
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        if (item.kind === 'file') {
+                            const entry = item.webkitGetAsEntry();
+                            if (entry) {
+                                if (entry.isDirectory) {
+                                    processDirectory(entry);
+                                } else {
+                                    processFile(entry);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Gestionnaire pour l'input de dossier
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    uploadFolder(e.target.files);
+                }
+            });
+
+            // Gestionnaire pour l'input de fichiers individuels  
+            singleFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    showFolderSelectionModal(e.target.files);
+                }
+            });
+        }
+
+        // Traitement des répertoires glissés-déposés
+        function processDirectory(dirEntry) {
+            const reader = dirEntry.createReader();
+            
+            function readEntries() {
+                reader.readEntries((entries) => {
+                    if (entries.length === 0) {
+                        return;
+                    }
+                    
+                    entries.forEach(entry => {
+                        if (entry.isDirectory) {
+                            processDirectory(entry);
+                        } else {
+                            processFile(entry);
+                        }
+                    });
+                    
+                    readEntries(); // Continue reading
+                });
+            }
+            
+            readEntries();
+        }
+
+        // Traitement des fichiers glissés-déposés
+        function processFile(fileEntry) {
+            fileEntry.file(file => {
+                const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+                
+                if (allowedTypes.some(type => file.type === type) || 
+                    ['pdf', 'docx', 'xlsx'].some(ext => file.name.toLowerCase().endsWith('.' + ext))) {
+                    console.log('Fichier accepté:', file.name);
+                    // Ajouter à la file d'upload
+                }
+            });
+        }
+
+        // Afficher la modale de sélection de dossier
+        function showFolderSelectionModal(files) {
+            if (!folders.length) {
+                alert('Aucun dossier de destination disponible. Créez d\'abord un dossier.');
+                return;
+            }
+
+            pendingFiles = files;
+
+            const foldersList = folders.map(folder => `
+                <div class="d-grid gap-2 mb-2">
+                    <button class="btn btn-outline-primary text-start" onclick="selectFolderForUpload(${folder.id})">
+                        <i class="bi bi-folder"></i> ${folder.name}
+                    </button>
+                </div>
             `).join('');
 
-            return `
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Dossier</th>
-                                <th>Fichiers</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
-                </div>
+            document.getElementById('foldersList').innerHTML = foldersList;
+            selectFolderModal.show();
+        }
+
+        // Sélectionner un dossier pour l'upload
+        async function selectFolderForUpload(folderId) {
+            selectFolderModal.hide();
+            
+            if (pendingFiles) {
+                await uploadFiles(pendingFiles, folderId);
+                pendingFiles = null;
+            }
+        }
+
+        // Upload de dossier complet avec structure
+        async function uploadFolder(files) {
+            const formData = new FormData();
+            const folderStructure = [];
+            
+            // Analyser la structure des fichiers
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const relativePath = file.webkitRelativePath;
+                
+                // Extraire la structure de dossiers
+                const pathParts = relativePath.split('/');
+                pathParts.pop(); // Retirer le nom du fichier
+                
+                folderStructure.push({
+                    file: file,
+                    folders: pathParts,
+                    originalPath: relativePath
+                });
+                
+                formData.append('files', file);
+            }
+            
+            formData.append('folderStructure', JSON.stringify(folderStructure));
+            
+            try {
+                showUploadProgress();
+                
+                const response = await fetch('/api/files/upload-folder', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                hideUploadProgress();
+                
+                if (data.success) {
+                    showSuccessMessage(`Upload terminé!\nFichiers uploadés: ${data.uploaded}\nErreurs: ${data.errors}`);
+                    await loadFolders();
+                    showAdminView();
+                } else {
+                    alert('Erreur lors de l\'upload: ' + data.error);
+                }
+                
+            } catch (error) {
+                console.error('Erreur upload:', error);
+                hideUploadProgress();
+                alert('Erreur lors de l\'upload des fichiers');
+            }
+        }
+
+        // Upload de fichiers individuels
+        async function uploadFiles(files, folderId) {
+            try {
+                showUploadProgress();
+                let uploaded = 0;
+                let errors = 0;
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('folder_id', folderId);
+
+                    try {
+                        const response = await fetch('/api/files/upload', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            uploaded++;
+                        } else {
+                            errors++;
+                            console.error('Erreur upload fichier:', file.name, data.error);
+                        }
+                    } catch (error) {
+                        errors++;
+                        console.error('Erreur upload fichier:', file.name, error);
+                    }
+
+                    // Mettre à jour la barre de progression
+                    const progress = ((i + 1) / files.length) * 100;
+                    document.querySelector('.progress-bar').style.width = progress + '%';
+                }
+
+                hideUploadProgress();
+                showSuccessMessage(`Upload terminé!\nFichiers uploadés: ${uploaded}\nErreurs: ${errors}`);
+                await loadFolders();
+                
+                // Recharger la vue admin actuelle
+                if (adminNavigationPath.length > 0) {
+                    const currentFolder = adminNavigationPath[adminNavigationPath.length - 1];
+                    await showAdminContent(currentFolder.id);
+                } else {
+                    showAdminView();
+                }
+                
+            } catch (error) {
+                console.error('Erreur upload:', error);
+                hideUploadProgress();
+                alert('Erreur lors de l\'upload des fichiers');
+            }
+        }
+
+        // Afficher un message de succès
+        function showSuccessMessage(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                <strong>Succès!</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
+            document.body.appendChild(alertDiv);
+            
+            // Supprimer l'alerte après 4 secondes
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 4000);
+        }
+
+        // Afficher/masquer la barre de progression
+        function showUploadProgress() {
+            const progressElement = document.getElementById('uploadProgress');
+            if (progressElement) {
+                progressElement.style.display = 'block';
+                document.querySelector('.progress-bar').style.width = '0%';
+            }
+        }
+
+        function hideUploadProgress() {
+            const progressElement = document.getElementById('uploadProgress');
+            if (progressElement) {
+                progressElement.style.display = 'none';
+            }
+        }
+
+        // Prévisualiser un fichier
+        async function previewFile(fileId, filename) {
+            try {
+                const response = await fetch(`/api/preview/${fileId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la prévisualisation');
+                }
+
+                const contentType = response.headers.get('content-type');
+                const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+                const previewTitle = document.getElementById('previewTitle');
+                const previewContent = document.getElementById('previewContent');
+                const downloadSection = document.getElementById('downloadSection');
+
+                previewTitle.textContent = filename;
+
+                if (contentType.includes('text/html')) {
+                    // Prévisualisation HTML
+                    const html = await response.text();
+                    previewContent.innerHTML = html;
+                } else if (contentType.includes('application/pdf')) {
+                    // Prévisualisation PDF via iframe
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    previewContent.innerHTML = `
+                        <iframe src="${url}" width="100%" height="600px" style="border: none;"></iframe>
+                    `;
+                } else {
+                    // Fallback pour autres types
+                    previewContent.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="bi bi-eye-slash" style="font-size: 4rem; color: #6c757d;"></i>
+                            <h4 class="mt-3">Prévisualisation non disponible</h4>
+                            <p class="text-muted">Ce type de fichier ne peut pas être prévisualisé dans le navigateur.</p>
+                        </div>
+                    `;
+                }
+
+                // Bouton de téléchargement selon le type
+                if (isDownloadAllowed(filename)) {
+                    downloadSection.innerHTML = `
+                        <button class="btn btn-success" onclick="downloadFile(${fileId})">
+                            <i class="bi bi-download"></i> Télécharger
+                        </button>
+                    `;
+                } else {
+                    downloadSection.innerHTML = `
+                        <button class="btn btn-outline-secondary" disabled title="Téléchargement non autorisé pour les fichiers PDF">
+                            <i class="bi bi-lock"></i> Téléchargement non autorisé
+                        </button>
+                    `;
+                }
+
+                previewModal.show();
+
+            } catch (error) {
+                console.error('Erreur prévisualisation:', error);
+                alert('Erreur lors de la prévisualisation du fichier');
+            }
+        }
+
+        // Télécharger un fichier
+        async function downloadFile(fileId) {
+            try {
+                const response = await fetch(`/api/files/${fileId}/download`);
+                
+                if (!response.ok) {
+                    throw new Error('Erreur lors du téléchargement');
+                }
+
+                const blob = await response.blob();
+                const contentDisposition = response.headers.get('content-disposition');
+                const filename = contentDisposition 
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '') 
+                    : `document_${fileId}`;
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('Erreur téléchargement:', error);
+                alert('Erreur lors du téléchargement du fichier');
+            }
         }
 
         // Gérer la connexion
@@ -437,48 +1403,91 @@
             }
         }
 
-        // Créer un dossier
+        // Afficher la modale de création de dossier
         function showCreateFolderModal() {
-            const name = prompt('Nom du nouveau dossier:');
-            if (name && name.trim()) {
-                createFolder(name.trim());
-            }
+            document.getElementById('folderNameInput').value = '';
+            document.getElementById('createFolderError').classList.add('d-none');
+            createFolderModal.show();
         }
 
-        async function createFolder(name) {
+        // Gérer la création du dossier
+        async function handleCreateFolder() {
+            const nameInput = document.getElementById('folderNameInput');
+            const errorDiv = document.getElementById('createFolderError');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                errorDiv.textContent = 'Le nom du dossier est requis';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
+            // Déterminer le parent_id basé sur la navigation actuelle
+            const parentId = adminNavigationPath.length > 0 
+                ? adminNavigationPath[adminNavigationPath.length - 1].id 
+                : null;
+
             try {
                 const response = await fetch('/api/folders', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ name, parent_id: null })
+                    body: JSON.stringify({ name, parent_id: parentId })
                 });
 
                 const data = await response.json();
                 
                 if (data.success) {
+                    createFolderModal.hide();
                     await loadFolders();
-                    showAdminView(); // Recharger la vue admin
+                    
+                    // Recharger la vue admin actuelle
+                    if (parentId) {
+                        await showAdminContent(parentId);
+                    } else {
+                        showAdminView();
+                    }
+                    
+                    showSuccessMessage(`Dossier "${name}" créé avec succès`);
                 } else {
-                    alert('Erreur : ' + data.error);
+                    errorDiv.textContent = data.error || 'Erreur lors de la création du dossier';
+                    errorDiv.classList.remove('d-none');
                 }
             } catch (error) {
                 console.error('Erreur création dossier:', error);
-                alert('Erreur lors de la création du dossier');
+                errorDiv.textContent = 'Erreur de connexion au serveur';
+                errorDiv.classList.remove('d-none');
             }
         }
 
-        // Renommer un dossier
-        function renameFolderPrompt(folderId, currentName) {
-            const newName = prompt('Nouveau nom du dossier:', currentName);
-            if (newName && newName.trim() && newName !== currentName) {
-                renameFolder(folderId, newName.trim());
-            }
+        // Afficher la modale de renommage
+        function showRenameFolderModal(folderId, currentName) {
+            pendingFolderId = folderId;
+            document.getElementById('newFolderNameInput').value = currentName;
+            document.getElementById('renameFolderError').classList.add('d-none');
+            renameFolderModal.show();
         }
 
-        async function renameFolder(folderId, newName) {
+        // Gérer le renommage du dossier
+        async function handleRenameFolder() {
+            const nameInput = document.getElementById('newFolderNameInput');
+            const errorDiv = document.getElementById('renameFolderError');
+            const newName = nameInput.value.trim();
+
+            if (!newName) {
+                errorDiv.textContent = 'Le nom du dossier est requis';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
+            if (!pendingFolderId) {
+                errorDiv.textContent = 'Erreur: ID du dossier non trouvé';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
             try {
-                const response = await fetch(`/api/folders/${folderId}`, {
+                const response = await fetch(`/api/folders/${pendingFolderId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -488,44 +1497,139 @@
                 const data = await response.json();
                 
                 if (data.success) {
+                    renameFolderModal.hide();
                     await loadFolders();
-                    showAdminView(); // Recharger la vue admin
+                    
+                    // Recharger la vue admin actuelle
+                    if (adminNavigationPath.length > 0) {
+                        const currentFolder = adminNavigationPath[adminNavigationPath.length - 1];
+                        await showAdminContent(currentFolder.id);
+                    } else {
+                        showAdminView();
+                    }
+                    
+                    showSuccessMessage(`Dossier renommé en "${newName}" avec succès`);
+                    pendingFolderId = null;
                 } else {
-                    alert('Erreur : ' + data.error);
+                    errorDiv.textContent = data.error || 'Erreur lors du renommage du dossier';
+                    errorDiv.classList.remove('d-none');
                 }
             } catch (error) {
                 console.error('Erreur renommage dossier:', error);
-                alert('Erreur lors du renommage du dossier');
+                errorDiv.textContent = 'Erreur de connexion au serveur';
+                errorDiv.classList.remove('d-none');
             }
         }
 
-        // Supprimer un dossier
-        async function deleteFolder(folderId) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer ce dossier ?')) {
-                try {
-                    const response = await fetch(`/api/folders/${folderId}`, {
-                        method: 'DELETE',
-                        credentials: 'include'
-                    });
+        // Afficher la modale de suppression de dossier
+        function showDeleteFolderModal(folderId, folderName) {
+            pendingFolderId = folderId;
+            document.getElementById('folderToDelete').textContent = folderName;
+            deleteFolderModal.show();
+        }
 
+        // Gérer la suppression du dossier
+        async function handleDeleteFolder() {
+            if (!pendingFolderId) {
+                alert('Erreur: ID du dossier non trouvé');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/folders/${pendingFolderId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
                     const data = await response.json();
                     
                     if (data.success) {
+                        deleteFolderModal.hide();
                         await loadFolders();
-                        showAdminView(); // Recharger la vue admin
+                        
+                        // Recharger la vue admin actuelle
+                        if (adminNavigationPath.length > 0) {
+                            const currentFolder = adminNavigationPath[adminNavigationPath.length - 1];
+                            await showAdminContent(currentFolder.id);
+                        } else {
+                            showAdminView();
+                        }
+                        
+                        showSuccessMessage(data.message || 'Dossier supprimé avec succès');
+                        pendingFolderId = null;
                     } else {
-                        alert('Erreur : ' + data.error);
+                        alert('Erreur: ' + (data.error || 'Erreur inconnue'));
                     }
-                } catch (error) {
-                    console.error('Erreur suppression dossier:', error);
-                    alert('Erreur lors de la suppression du dossier');
+                } else {
+                    const errorText = await response.text();
+                    let errorMessage = 'Erreur lors de la suppression du dossier';
+                    
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        errorMessage += ` (${response.status}: ${response.statusText})`;
+                    }
+                    
+                    alert(errorMessage);
                 }
+            } catch (error) {
+                console.error('Erreur suppression dossier:', error);
+                alert('Erreur de connexion: ' + error.message);
             }
         }
 
-        // Naviguer vers un dossier
-        function navigateToFolder(folderId) {
-            alert(`Navigation vers le dossier ${folderId} - À implémenter`);
+        // Afficher la modale de suppression de fichier
+        function showDeleteFileModal(fileId, filename) {
+            pendingFileId = fileId;
+            document.getElementById('fileToDelete').textContent = filename;
+            deleteFileModal.show();
+        }
+
+        // Gérer la suppression du fichier
+        async function handleDeleteFile() {
+            if (!pendingFileId) {
+                alert('Erreur: ID du fichier non trouvé');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/files/${pendingFileId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    deleteFileModal.hide();
+                    
+                    // Recharger la vue admin actuelle
+                    if (adminNavigationPath.length > 0) {
+                        const currentFolder = adminNavigationPath[adminNavigationPath.length - 1];
+                        await showAdminContent(currentFolder.id);
+                    } else {
+                        showAdminView();
+                    }
+                    
+                    showSuccessMessage('Fichier supprimé avec succès');
+                    pendingFileId = null;
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Erreur suppression fichier:', error);
+                alert('Erreur lors de la suppression du fichier');
+            }
+        }
+
+        // Naviguer vers un dossier (vue publique)
+        async function navigateToFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                await showFolderView(folder);
+            }
         }
 
         // Initialisation de l'application
@@ -533,6 +1637,9 @@
             console.log('🚀 Initialisation de l\'application...');
             
             try {
+                // Initialiser les modales
+                initModals();
+                
                 await checkAuth();
                 await loadFolders();
                 
